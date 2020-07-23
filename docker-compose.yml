@@ -1,0 +1,47 @@
+version: "3.7"
+
+services:
+  server1:
+    build: ./server
+    hostname: server1
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.server1.rule=PathPrefix(`/server1`)
+      - traefik.http.routers.server1.middlewares=server1
+      - traefik.http.services.server1.loadbalancer.server.port=3000
+      - traefik.http.middlewares.server1.stripprefix.prefixes=/server1
+  server2:
+    build: ./server
+    hostname: server2
+    environment:
+      - TRUST_PROXY=1
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.server2.rule=PathPrefix(`/server2`)
+      - traefik.http.routers.server2.middlewares=server2
+      - traefik.http.services.server2.loadbalancer.server.port=3000
+      - traefik.http.middlewares.server2.stripprefix.prefixes=/server2
+  apache:
+    image: httpd:2.4
+    volumes:
+      - ./httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+    ports:
+      - 8080:80
+  nginx:
+    image: nginx:1.19
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - 8181:80
+  traefik:
+    image: traefik:v2.3
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - 8282:80
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
